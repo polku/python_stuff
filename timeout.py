@@ -7,8 +7,8 @@ Mechanism to timeout if a function takes too much time
 import random
 import signal
 import time
+from functools import wraps
 
-TOO_LONG = 8
 
 class TimeoutException(Exception):
     pass
@@ -18,6 +18,17 @@ def sig_handler(signum, frame):
     raise TimeoutException()
 
 
+def timeout(delay):
+    def timeout_sec(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            signal.setitimer(signal.ITIMER_REAL, delay)
+            return func(*args, **kwargs)
+        return wrapper
+    return timeout_sec
+
+
+@timeout(5)
 def my_function():
     x = random.randint(1, 10)
     print('Will sleep for {} seconds'.format(x))
@@ -27,7 +38,6 @@ def my_function():
 def main():
     signal.signal(signal.SIGALRM, sig_handler)
     while True:
-        signal.setitimer(signal.ITIMER_REAL, TOO_LONG)
         try:
             my_function()
             print('    Function finished.')
